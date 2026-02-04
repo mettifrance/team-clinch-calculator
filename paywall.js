@@ -12,24 +12,26 @@ const PRO_EMAIL_KEY = 'clinch_calc_email';
 // STATE
 let isPro = localStorage.getItem(IS_PRO_KEY) === 'true';
 
-// UTILITY DOM
-const $ = id => document.getElementById(id);
+// UTILITY DOM (rinominato per evitare conflitti)
+const getElPaywall = id => document.getElementById(id);
 
 // UPDATE PRO STATUS (chiamato all'init e dopo unlock)
 function updateProStatus() {
   isPro = localStorage.getItem(IS_PRO_KEY) === 'true';
   
   // Aggiorna pill status
-  const pill = $('statusPill');
-  pill.textContent = isPro ? '✅ PRO attivato' : '🆓 Demo gratuita';
-  pill.style.background = isPro ? 'var(--success-bg)' : 'rgba(0,217,255,0.15)';
-  pill.style.borderColor = isPro ? 'rgba(0,255,136,0.3)' : 'rgba(0,217,255,0.28)';
-  pill.style.color = isPro ? 'var(--success)' : 'var(--accent)';
+  const pill = getElPaywall('statusPill');
+  if (pill) {
+    pill.textContent = isPro ? '✅ PRO attivato' : '🆓 Demo gratuita';
+    pill.style.background = isPro ? 'var(--success-bg)' : 'rgba(0,217,255,0.15)';
+    pill.style.borderColor = isPro ? 'rgba(0,255,136,0.3)' : 'rgba(0,217,255,0.28)';
+    pill.style.color = isPro ? 'var(--success)' : 'var(--accent)';
+  }
   
   // Nascondi/mostra elementi free
-  const freeLimitBadge = $('freeLimitBadge');
-  const unlockBtn = $('unlockBtn');
-  const proBanner = $('proBanner');
+  const freeLimitBadge = getElPaywall('freeLimitBadge');
+  const unlockBtn = getElPaywall('unlockBtn');
+  const proBanner = getElPaywall('proBanner');
   
   if (freeLimitBadge) freeLimitBadge.classList.toggle('hidden', isPro);
   if (unlockBtn) unlockBtn.classList.toggle('hidden', isPro);
@@ -37,7 +39,7 @@ function updateProStatus() {
   
   // Sblocca inputs ppg
   ['ppgHome', 'ppgAway'].forEach(id => {
-    const input = $(id);
+    const input = getElPaywall(id);
     if (!input) return;
     
     if (isPro) {
@@ -63,13 +65,13 @@ function updateProStatus() {
 
 // SHOW PAYWALL MODAL
 function showPaywall() {
-  const modal = $('paywallModal');
+  const modal = getElPaywall('paywallModal');
   if (modal) modal.classList.add('active');
 }
 
 // CLOSE PAYWALL MODAL
 function closePaywall() {
-  const modal = $('paywallModal');
+  const modal = getElPaywall('paywallModal');
   if (modal) modal.classList.remove('active');
 }
 
