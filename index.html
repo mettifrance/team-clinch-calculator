@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Team Clinch Calculator Pro</title>
+
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <h1>⚽ Team Clinch Calculator</h1>
+      <p class="subtitle">Calcola quando la tua squadra vince matematicamente il campionato. Tool universale per qualsiasi lega.</p>
+      <div class="pill" id="statusPill">🆓 Demo gratuita</div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Input Base</h2>
+        <form id="calcForm">
+          <div class="input-grid">
+            <label>
+              <span class="label-text">Nome squadra leader</span>
+              <input id="homeName" type="text" value="Vicenza" placeholder="es. Vicenza" />
+            </label>
+            <label>
+              <span class="label-text">Nome avversario principale</span>
+              <input id="awayName" type="text" value="Villain" placeholder="es. Villain" />
+            </label>
+            <label>
+              <span class="label-text">Punti attuali leader</span>
+              <input id="pointsHome" type="number" step="1" min="0" value="62" inputmode="numeric" />
+            </label>
+            <label>
+              <span class="label-text">Punti attuali avversario</span>
+              <input id="pointsAway" type="number" step="1" min="0" value="46" inputmode="numeric" />
+            </label>
+            <label>
+              <span class="label-text">Partite rimanenti</span>
+              <input id="remaining" type="number" step="1" min="0" value="14" inputmode="numeric" />
+            </label>
+            <label>
+              <span class="label-text">Media punti leader (0–3) <span class="badge-pro" style="font-size:10px;padding:3px 8px;margin-left:6px">PRO</span></span>
+              <input id="ppgHome" type="text" inputmode="decimal" value="2.60" placeholder="2,60" readonly class="input-locked" />
+            </label>
+            <label>
+              <span class="label-text">Media punti avversario (0–3) <span class="badge-pro" style="font-size:10px;padding:3px 8px;margin-left:6px">PRO</span></span>
+              <input id="ppgAway" type="text" inputmode="decimal" value="2.30" placeholder="2,30" readonly class="input-locked" />
+            </label>
+          </div>
+
+          <div class="btns">
+            <button type="submit" class="btn-primary">🚀 Calcola</button>
+            <button id="unlockBtn" type="button" class="btn-pro">🔓 Sblocca PRO (5€)</button>
+            <button id="shareBtn" type="button" class="btn-secondary">📤 Condividi</button>
+          </div>
+
+          <div id="proBanner" class="pro-banner">
+            <strong>⚡ Vuoi modificare le medie punti e fare simulazioni avanzate?</strong><br>
+            Sblocca la versione PRO per accedere a scenari multipli, analisi di sensibilità e report personalizzato.
+            <button class="btn-pro" style="margin-top:12px;font-size:13px;padding:10px 18px" onclick="showPaywall()">Sblocca ora (5€)</button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="card">
+        <h2>Risultato Base</h2>
+        <div class="kpi-grid">
+          <div class="kpi-box">
+            <div class="kpi-label">Partite dalla fine</div>
+            <div id="fromEnd" class="kpi-value">—</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-label">Tra quante partite</div>
+            <div id="afterGames" class="kpi-value">—</div>
+          </div>
+        </div>
+        <div class="detail-box">
+          <div id="detail" class="detail-text">Compila i campi e premi "Calcola".</div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="card">
+      <h2>📋 Tabella Simulazione Dettagliata <span class="badge-pro" id="freeLimitBadge">FREE: prime 4 righe</span></h2>
+      <p style="font-size:13px;color:var(--txt-muted);margin-bottom:16px;line-height:1.5">
+        Simulazione partita per partita: vedi l'evoluzione dei punti, gap e momento esatto del clinch matematico.
+      </p>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Step</th><th>k</th><th>R</th><th>Pt Leader</th><th>Pt Avv</th><th>Gap</th><th>Bottino max</th><th>Stato</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card pro-section" id="presetsSection">
+      <h2>🎯 10 Scenari What-If <span class="badge-pro">PRO</span></h2>
+      <p style="font-size:13px;color:var(--txt-muted);margin-bottom:16px;line-height:1.5">
+        Analizza rapidamente come cambiano i risultati modificando le medie punti con scenari preimpostati.
+      </p>
+      <div class="preset-grid" id="presetGrid"></div>
+      <button class="btn-pro" style="width:100%;margin-top:16px" onclick="showPaywall()">🔓 Sblocca PRO per usare gli scenari (5€)</button>
+    </section>
+
+    <section class="card pro-section" id="sensitivitySection">
+      <h2>📊 Sensitivity Analysis <span class="badge-pro">PRO</span></h2>
+      <p style="font-size:13px;color:var(--txt-muted);margin-bottom:12px;line-height:1.5">
+        Griglia: varia medie punti ±0.4 per vedere come cambia il risultato
+      </p>
+      <div id="sensitivityGrid" class="sensitivity-grid"></div>
+      <button class="btn-pro" style="width:100%;margin-top:16px" onclick="showPaywall()">🔓 Sblocca PRO per l'analisi di sensibilità (5€)</button>
+    </section>
+
+    <section class="card pro-section" id="probabilitySection">
+      <h2>🎲 Probabilità Monte Carlo <span class="badge-pro">PRO</span></h2>
+      <p style="font-size:13px;color:var(--txt-muted);margin-bottom:12px;line-height:1.5">
+        Simula 10.000 stagioni considerando la volatilità dei risultati per ottenere probabilità statistiche affidabili.
+      </p>
+      <label style="display:block;margin-bottom:12px">
+        <span class="label-text">Volatilità (±punti/partita): <span id="volValue">0.20</span></span>
+        <input id="volatilitySlider" type="range" min="0.05" max="0.50" step="0.05" value="0.20"
+               style="width:100%;margin-top:8px" disabled />
+      </label>
+      <button id="runMonteCarloBtn" class="btn-primary" style="margin-bottom:16px" disabled>Simula 10k stagioni</button>
+      <div id="probabilityResult" class="detail-box"></div>
+      <button class="btn-pro" style="width:100%;margin-top:16px" onclick="showPaywall()">🔓 Sblocca PRO per la simulazione Monte Carlo (5€)</button>
+    </section>
+
+    <section class="card pro-section" id="exportSection">
+      <h2>📤 Export & Condivisione <span class="badge-pro">PRO</span></h2>
+      <p style="font-size:13px;color:var(--txt-muted);margin-bottom:16px;line-height:1.5">
+        Esporta report professionale in PDF, dati tabellari in CSV o crea una Social Card per Instagram/Twitter.
+      </p>
+      <div class="btns">
+        <button id="exportPdfBtn" class="btn-secondary" disabled>📄 Export PDF</button>
+        <button id="exportCsvBtn" class="btn-secondary" disabled>📊 Export CSV</button>
+        <button id="socialCardBtn" class="btn-secondary" disabled>📸 Social Card</button>
+      </div>
+      <button class="btn-pro" style="width:100%;margin-top:16px" onclick="showPaywall()">🔓 Sblocca PRO per export e condivisione (5€)</button>
+    </section>
+  </div>
+
+  <div id="paywallModal" class="modal">
+    <div class="modal-content">
+      <h2 style="margin-bottom:16px;color:var(--accent)">🔓 Sblocca versione PRO</h2>
+      <p style="margin-bottom:20px;line-height:1.6">
+        <strong>€5,00 one-shot</strong> per accesso illimitato a:
+      </p>
+      <ul style="margin-bottom:24px;line-height:1.8;list-style:none;padding:0">
+        <li>✅ 10 scenari what-if pronti</li>
+        <li>✅ Sensitivity analysis (griglia completa)</li>
+        <li>✅ Probabilità Monte Carlo</li>
+        <li>✅ Export PDF + CSV + Social Card</li>
+        <li>✅ Tabella completa (no limiti)</li>
+        <li>✅ Accesso permanente su questo device</li>
+      </ul>
+      <label style="display:block;margin-bottom:16px">
+        <span class="label-text">La tua email (per ricevere la licenza)</span>
+        <input id="emailInput" type="email" placeholder="esempio@email.com" required />
+      </label>
+      <div class="btns">
+        <button id="proceedPaymentBtn" class="btn-pro" style="flex:1">Procedi al pagamento</button>
+        <button id="closeModalBtn" class="btn-secondary">Annulla</button>
+      </div>
+      <p style="margin-top:16px;font-size:12px;color:var(--txt-muted);text-align:center">
+        Pagamento sicuro via Stripe. Token salvato localmente.
+      </p>
+    </div>
+  </div>
+
+  <!-- JS esterni -->
+  <script src="./core.js"></script>
+  <script src="./paywall.js"></script>
+  <script src="./export.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
