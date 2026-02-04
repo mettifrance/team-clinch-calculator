@@ -1,51 +1,63 @@
 // app.js
-// ========================================================
-// UI BINDING: event listeners, render, init
-// ========================================================
+console.log('📦 app.js caricato!');
 
-// STATE (globale per condividere con export)
+// STATE
 window.AppState = {
   currentScenario: null
 };
 
-// UTILITY DOM
-const $ = id => document.getElementById(id);
+// UTILITY DOM (rinominato per evitare conflitti)
+const getEl = id => {
+  const el = document.getElementById(id);
+  if (!el) console.warn(`⚠️ Elemento #${id} non trovato`);
+  return el;
+};
 
-// RENDER (aggiorna UI con risultati)
+// RENDER
 function render() {
-  // Leggi inputs (passa elementi DOM a core.js)
-  const elements = {
-    homeName: $('homeName'),
-    awayName: $('awayName'),
-    pointsHome: $('pointsHome'),
-    pointsAway: $('pointsAway'),
-    remaining: $('remaining'),
-    ppgHome: $('ppgHome'),
-    ppgAway: $('ppgAway')
-  };
+  console.log('🎨 render() chiamato');
   
-  const scenario = window.CoreLogic.readInputs(elements);
-  const err = window.CoreLogic.validate(scenario);
-  
-  if (err) {
-    $('fromEnd').textContent = '—';
-    $('afterGames').textContent = '—';
-    $('detail').textContent = '⚠️ ' + err;
-    $('tbody').innerHTML = `<tr><td colspan="8" style="text-align:center;padding:22px;color:var(--danger)">${err}</td></tr>`;
+  if (!window.CoreLogic) {
+    console.error('❌ CoreLogic non disponibile!');
+    alert('Errore: CoreLogic non caricato. Verifica che core.js sia presente.');
     return;
   }
   
-  // Salva scenario corrente (per export)
+  const elements = {
+    homeName: getEl('homeName'),
+    awayName: getEl('awayName'),
+    pointsHome: getEl('pointsHome'),
+    pointsAway: getEl('pointsAway'),
+    remaining: getEl('remaining'),
+    ppgHome: getEl('ppgHome'),
+    ppgAway: getEl('ppgAway')
+  };
+  
+  console.log('📝 Elementi trovati:', elements);
+  
+  const scenario = window.CoreLogic.readInputs(elements);
+  console.log('📊 Scenario letto:', scenario);
+  
+  const err = window.CoreLogic.validate(scenario);
+  
+  if (err) {
+    console.warn('⚠️ Validazione fallita:', err);
+    getEl('fromEnd').textContent = '—';
+    getEl('afterGames').textContent = '—';
+    getEl('detail').textContent = '⚠️ ' + err;
+    getEl('tbody').innerHTML = `<tr><td colspan="8" style="text-align:center;padding:22px;color:var(--danger)">${err}</td></tr>`;
+    return;
+  }
+  
   window.AppState.currentScenario = scenario;
   
-  // Calcola clinch
   const { clinchK, rows } = window.CoreLogic.computeClinch(scenario);
+  console.log('✅ Calcolo completato:', { clinchK, rows: rows.length });
   
-  // Aggiorna tabella
-  const tbody = $('tbody');
+  const tbody = getEl('tbody');
   tbody.innerHTML = '';
   
-  const isPro = window.PaywallLogic.isPro();
+  const isPro = window.PaywallLogic ? window.PaywallLogic.isPro() : false;
   const limit = isPro ? rows.length : Math.min(4, rows.length);
   
   rows.slice(0, limit).forEach(r => {
@@ -69,209 +81,102 @@ function render() {
     tbody.appendChild(tr);
   }
   
-  // Aggiorna KPI
   if (clinchK === null) {
-    $('fromEnd').textContent = '—';
-    $('afterGames').textContent = '—';
-    $('detail').textContent = `${scenario.homeName} non clincha in anticipo entro ${scenario.remaining} partite.`;
+    getEl('fromEnd').textContent = '—';
+    getEl('afterGames').textContent = '—';
+    getEl('detail').textContent = `${scenario.homeName} non clincha in anticipo entro ${scenario.remaining} partite.`;
     return;
   }
   
   const fromEnd = scenario.remaining - clinchK;
-  $('fromEnd').textContent = String(fromEnd);
-  $('afterGames').textContent = String(clinchK);
+  getEl('fromEnd').textContent = String(fromEnd);
+  getEl('afterGames').textContent = String(clinchK);
   
   const pH = scenario.pointsHome + clinchK * scenario.ppgHome;
   const pA = scenario.pointsAway + clinchK * scenario.ppgAway;
   const gap = pH - pA;
   const bounty = 3 * fromEnd;
   
-  $('detail').textContent = `🏆 ${scenario.homeName} campione con ${fromEnd} partite dalla fine (tra ${clinchK} partite). ${scenario.homeName} ${window.CoreLogic.int(pH)}pt, ${scenario.awayName} ${window.CoreLogic.int(pA)}pt, gap ${window.CoreLogic.int(gap)}, bottino max ${window.CoreLogic.int(bounty)}.`;
+  getEl('detail').textContent = `🏆 ${scenario.homeName} campione con ${fromEnd} partite dalla fine (tra ${clinchK} partite). ${scenario.homeName} ${window.CoreLogic.int(pH)}pt, ${scenario.awayName} ${window.CoreLogic.int(pA)}pt, gap ${window.CoreLogic.int(gap)}, bottino max ${window.CoreLogic.int(bounty)}.`;
+  
+  console.log('✅ Render completato!');
 }
 
-// INIT PRESETS (popola griglia scenari)
-function initPresets() {
-  const grid = $('presetGrid');
-  if (!grid) return;
-  
-  grid.innerHTML = '';
-  
-  window.CoreLogic.presets.forEach(preset => {
-    const btn = document.createElement('button');
-    btn.className = 'preset-btn';
-    btn.textContent = preset.label;
-    btn.addEventListener('click', () => applyPreset(preset));
-    grid.appendChild(btn);
-  });
-}
-
-// APPLY PRESET (modifica ppg e ricalcola)
-function applyPreset(preset) {
-  if (!window.PaywallLogic.isPro()) {
-    window.PaywallLogic.showPaywall();
-    return;
-  }
-  
-  const ppgHome = $('ppgHome');
-  const ppgAway = $('ppgAway');
-  
-  const baseH = 2.60;
-  const baseA = 2.30;
-  
-  const newH = window.CoreLogic.clamp(baseH + preset.deltaH, 0, 3);
-  const newA = window.CoreLogic.clamp(baseA + preset.deltaA, 0, 3);
-  
-  ppgHome.value = newH.toFixed(2);
-  ppgAway.value = newA.toFixed(2);
-  
-  render();
-}
-
-// INIT SENSITIVITY GRID
-function initSensitivityGrid() {
-  const grid = $('sensitivityGrid');
-  if (!grid) return;
-  
-  // Placeholder (popola quando PRO sbloccato e calcolo eseguito)
-  grid.innerHTML = '<div style="text-align:center;padding:20px;color:var(--txt-muted)">Esegui un calcolo per vedere la sensitivity analysis</div>';
-}
-
-// RENDER SENSITIVITY (chiamato dopo render se PRO)
-function renderSensitivity() {
-  if (!window.PaywallLogic.isPro() || !window.AppState.currentScenario) return;
-  
-  const grid = $('sensitivityGrid');
-  if (!grid) return;
-  
-  const results = window.CoreLogic.computeSensitivityGrid(window.AppState.currentScenario);
-  
-  grid.innerHTML = '';
-  
-  results.forEach(r => {
-    const cell = document.createElement('div');
-    cell.className = 'sensitivity-cell';
-    cell.style.background = r.fromEnd !== null 
-      ? `rgba(0, 255, 136, ${Math.min(r.fromEnd / 10, 1) * 0.3})` 
-      : 'rgba(255, 71, 87, 0.2)';
-    cell.textContent = r.fromEnd !== null ? r.fromEnd : '—';
-    cell.title = `ppgH: ${r.ppgHome.toFixed(2)}, ppgA: ${r.ppgAway.toFixed(2)}`;
-    grid.appendChild(cell);
-  });
-}
-
-// SHARE (genera URL con parametri)
-function share() {
-  const elements = {
-    homeName: $('homeName'),
-    awayName: $('awayName'),
-    pointsHome: $('pointsHome'),
-    pointsAway: $('pointsAway'),
-    remaining: $('remaining'),
-    ppgHome: $('ppgHome'),
-    ppgAway: $('ppgAway')
-  };
-  
-  const params = new URLSearchParams({
-    home: elements.homeName.value,
-    away: elements.awayName.value,
-    ph: elements.pointsHome.value,
-    pa: elements.pointsAway.value,
-    r: elements.remaining.value,
-    ppgh: elements.ppgHome.value,
-    ppga: elements.ppgAway.value
-  });
-  
-  const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
-  
-  navigator.clipboard.writeText(url).then(() => {
-    alert('✅ Link copiato negli appunti!\n\n' + url);
-  }).catch(() => {
-    prompt('Copia questo link:', url);
-  });
-}
-
-// LOAD FROM URL (se ci sono parametri)
-function loadFromURL() {
-  const params = new URLSearchParams(window.location.search);
-  
-  if (params.has('home')) $('homeName').value = params.get('home');
-  if (params.has('away')) $('awayName').value = params.get('away');
-  if (params.has('ph')) $('pointsHome').value = params.get('ph');
-  if (params.has('pa')) $('pointsAway').value = params.get('pa');
-  if (params.has('r')) $('remaining').value = params.get('r');
-  if (params.has('ppgh')) $('ppgHome').value = params.get('ppgh');
-  if (params.has('ppga')) $('ppgAway').value = params.get('ppga');
-}
-
-// MONTE CARLO
-function runMonteCarlo() {
-  if (!window.PaywallLogic.isPro() || !window.AppState.currentScenario) {
-    window.PaywallLogic.showPaywall();
-    return;
-  }
-  
-  const volatility = parseFloat($('volatilitySlider').value);
-  const resultDiv = $('probabilityResult');
-  
-  resultDiv.innerHTML = '<p style="text-align:center;color:var(--txt-muted)">⏳ Simulando 10.000 stagioni...</p>';
-  
-  // Simula in modo asincrono per non bloccare UI
-  setTimeout(() => {
-    const probabilities = window.CoreLogic.runMonteCarlo(
-      window.AppState.currentScenario,
-      volatility,
-      10000
-    );
-    
-    let html = '<table style="width:100%;font-size:12px"><thead><tr><th>Partite</th><th>Probabilità</th></tr></thead><tbody>';
-    
-    probabilities.filter(p => p.probability > 1).forEach(p => {
-      html += `<tr><td>Tra ${p.k} partite</td><td><strong>${p.probability.toFixed(1)}%</strong></td></tr>`;
-    });
-    
-    html += '</tbody></table>';
-    resultDiv.innerHTML = html;
-  }, 100);
-}
-
-// INIT (chiamato all'avvio)
+// INIT
 function init() {
-  // Check PRO status
-  window.PaywallLogic.checkProStatus();
+  console.log('🚀 init() chiamato');
+  console.log('📦 CoreLogic disponibile?', !!window.CoreLogic);
+  console.log('📦 PaywallLogic disponibile?', !!window.PaywallLogic);
+  console.log('📦 ExportLogic disponibile?', !!window.ExportLogic);
   
-  // Load from URL se presenti parametri
-  loadFromURL();
+  // Check PRO status
+  if (window.PaywallLogic) {
+    window.PaywallLogic.checkProStatus();
+  }
   
   // Event listeners
-  const form = $('calcForm');
+  const form = getEl('calcForm');
+  console.log('🔍 Form trovato?', !!form);
+  
   if (form) {
     form.addEventListener('submit', e => {
+      console.log('✅ Submit evento catturato!');
       e.preventDefault();
+      console.log('✅ preventDefault() eseguito');
       render();
-      renderSensitivity();
+    });
+    console.log('✅ Listener submit aggiunto al form');
+  } else {
+    console.error('❌ Form #calcForm non trovato!');
+  }
+  
+  const unlockBtn = getEl('unlockBtn');
+  if (unlockBtn && window.PaywallLogic) {
+    unlockBtn.addEventListener('click', () => {
+      console.log('🔓 Unlock button cliccato');
+      window.PaywallLogic.showPaywall();
     });
   }
   
-  const unlockBtn = $('unlockBtn');
-  if (unlockBtn) {
-    unlockBtn.addEventListener('click', window.PaywallLogic.showPaywall);
-  }
-  
-  const shareBtn = $('shareBtn');
+  const shareBtn = getEl('shareBtn');
   if (shareBtn) {
-    shareBtn.addEventListener('click', share);
+    shareBtn.addEventListener('click', () => {
+      console.log('📤 Share button cliccato');
+      
+      const params = new URLSearchParams({
+        home: getEl('homeName').value,
+        away: getEl('awayName').value,
+        ph: getEl('pointsHome').value,
+        pa: getEl('pointsAway').value,
+        r: getEl('remaining').value,
+        ppgh: getEl('ppgHome').value,
+        ppga: getEl('ppgAway').value
+      });
+      
+      const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+      
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+          alert('✅ Link copiato negli appunti!\n\n' + url);
+        }).catch(() => {
+          prompt('Copia questo link:', url);
+        });
+      } else {
+        prompt('Copia questo link:', url);
+      }
+    });
   }
   
   // Modal handlers
-  const closeModalBtn = $('closeModalBtn');
-  if (closeModalBtn) {
+  const closeModalBtn = getEl('closeModalBtn');
+  if (closeModalBtn && window.PaywallLogic) {
     closeModalBtn.addEventListener('click', window.PaywallLogic.closePaywall);
   }
   
-  const proceedPaymentBtn = $('proceedPaymentBtn');
-  if (proceedPaymentBtn) {
+  const proceedPaymentBtn = getEl('proceedPaymentBtn');
+  if (proceedPaymentBtn && window.PaywallLogic) {
     proceedPaymentBtn.addEventListener('click', () => {
-      const email = $('emailInput').value;
+      const email = getEl('emailInput').value;
       if (!email || !email.includes('@')) {
         alert('⚠️ Inserisci un indirizzo email valido');
         return;
@@ -280,64 +185,43 @@ function init() {
     });
   }
   
-  // Lock inputs PRO (click mostra paywall)
-  ['ppgHome', 'ppgAway'].forEach(id => {
-    const input = $(id);
-    if (input) {
-      input.addEventListener('click', () => {
-        if (!window.PaywallLogic.isPro()) {
-          window.PaywallLogic.showPaywallPopup();
-        }
-      });
-    }
-  });
+  // Load from URL se presenti parametri
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('home')) getEl('homeName').value = params.get('home');
+  if (params.has('away')) getEl('awayName').value = params.get('away');
+  if (params.has('ph')) getEl('pointsHome').value = params.get('ph');
+  if (params.has('pa')) getEl('pointsAway').value = params.get('pa');
+  if (params.has('r')) getEl('remaining').value = params.get('r');
+  if (params.has('ppgh')) getEl('ppgHome').value = params.get('ppgh');
+  if (params.has('ppga')) getEl('ppgAway').value = params.get('ppga');
   
-  // Monte Carlo
-  const monteCarloBtn = $('runMonteCarloBtn');
-  if (monteCarloBtn) {
-    monteCarloBtn.addEventListener('click', runMonteCarlo);
-  }
-  
-  // Volatility slider
-  const volSlider = $('volatilitySlider');
-  const volValue = $('volValue');
-  if (volSlider && volValue) {
-    volSlider.addEventListener('input', () => {
-      volValue.textContent = volSlider.value;
-    });
-  }
-  
-  // Export buttons
-  const exportPdfBtn = $('exportPdfBtn');
-  if (exportPdfBtn) {
-    exportPdfBtn.addEventListener('click', window.ExportLogic.exportPDF);
-  }
-  
-  const exportCsvBtn = $('exportCsvBtn');
-  if (exportCsvBtn) {
-    exportCsvBtn.addEventListener('click', window.ExportLogic.exportCSV);
-  }
-  
-  const socialCardBtn = $('socialCardBtn');
-  if (socialCardBtn) {
-    socialCardBtn.addEventListener('click', window.ExportLogic.createSocialCard);
-  }
-  
-  // Init presets e sensitivity
-  initPresets();
-  initSensitivityGrid();
-  
-  // Primo render con valori di default
+  // Primo render
+  console.log('🎨 Eseguo primo render...');
   render();
+  
+  console.log('✅ init() completato!');
 }
 
-// Avvia tutto quando DOM è pronto
+// Esponi globalmente per onclick in HTML
+window.showPaywall = () => {
+  console.log('🔓 showPaywall() chiamato da HTML');
+  if (window.PaywallLogic) {
+    window.PaywallLogic.showPaywall();
+  } else {
+    console.error('❌ PaywallLogic non disponibile');
+  }
+};
+
+// Avvia
+console.log('📌 document.readyState:', document.readyState);
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  console.log('⏳ DOM ancora in caricamento, aspetto DOMContentLoaded...');
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('✅ DOMContentLoaded fired!');
+    init();
+  });
 } else {
+  console.log('✅ DOM già pronto, avvio init() subito');
   init();
 }
-
-// Esponi funzioni globali per onclick in HTML
-window.showPaywall = window.PaywallLogic.showPaywall;
-window.applyPreset = applyPreset;
