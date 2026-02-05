@@ -118,7 +118,7 @@
   <div class="wrap">
     <header>
       <h1>⚽ Quando Vinci?</h1>
-      <p class="subtitle">Calcola quando la tua squadra vince matematicamente il campionato. Tool universale per qualsiasi lega.</p>
+      <p class="subtitle">Calcola quando una squadra vince matematicamente il campionato. Funziona per qualsiasi lega.</p>
       <div class="pill" id="statusPill">🆓 Demo gratuita</div>
     </header>
 
@@ -128,31 +128,31 @@
         <form id="calcForm">
           <div class="input-grid">
             <label>
-              <span class="label-text">Nome squadra leader</span>
-              <input id="homeName" type="text" value="" />
+              <span class="label-text">Nome capolista (ora)</span>
+              <input id="homeName" type="text" value="Vicenza" />
             </label>
             <label>
-              <span class="label-text">Nome avversario principale</span>
-              <input id="awayName" type="text" value="" />
+              <span class="label-text">Nome inseguitrice</span>
+              <input id="awayName" type="text" value="Villain" />
             </label>
             <label>
-              <span class="label-text">Punti attuali leader</span>
-              <input id="pointsHome" type="number" step="1" min="0" value="" inputmode="numeric" />
+              <span class="label-text">Punti attuali capolista</span>
+              <input id="pointsHome" type="number" step="1" min="0" value="62" inputmode="numeric" />
             </label>
             <label>
-              <span class="label-text">Punti attuali avversario</span>
-              <input id="pointsAway" type="number" step="1" min="0" value="" inputmode="numeric" />
+              <span class="label-text">Punti attuali inseguitrice</span>
+              <input id="pointsAway" type="number" step="1" min="0" value="46" inputmode="numeric" />
             </label>
             <label>
               <span class="label-text">Partite rimanenti</span>
-              <input id="remaining" type="number" step="1" min="0" value="" inputmode="numeric" />
+              <input id="remaining" type="number" step="1" min="0" value="14" inputmode="numeric" />
             </label>
             <label>
-              <span class="label-text">Media punti leader (0–3) <span class="badge-pro" style="font-size:10px;padding:3px 8px;margin-left:6px">PRO</span></span>
+              <span class="label-text">Media punti capolista (0–3) <span class="badge-pro" style="font-size:10px;padding:3px 8px;margin-left:6px">PRO</span></span>
               <input id="ppgHome" type="text" inputmode="decimal" value="2.60" readonly class="input-locked" />
             </label>
             <label>
-              <span class="label-text">Media punti avversario (0–3) <span class="badge-pro" style="font-size:10px;padding:3px 8px;margin-left:6px">PRO</span></span>
+              <span class="label-text">Media punti inseguitrice (0–3) <span class="badge-pro" style="font-size:10px;padding:3px 8px;margin-left:6px">PRO</span></span>
               <input id="ppgAway" type="text" inputmode="decimal" value="2.30" readonly class="input-locked" />
             </label>
           </div>
@@ -164,15 +164,15 @@
           </div>
 
           <div id="proBanner" class="pro-banner">
-            <strong>⚡ Vuoi modificare le medie punti e fare simulazioni avanzate?</strong><br>
-            Sblocca la versione PRO per accedere a scenari multipli, analisi di sensibilità e report personalizzato.
+            <strong>⚡ Vuoi simulare scenari e ribaltoni?</strong><br>
+            Sblocca la versione PRO per scenari multipli, analisi di sensibilità e report personalizzato.
             <button class="btn-pro" style="margin-top:12px;font-size:13px;padding:10px 18px" onclick="showPaywall()">Sblocca ora (5€)</button>
           </div>
         </form>
       </section>
 
       <aside class="card">
-        <h2>Quando vinci il campionato</h2>
+        <h2>Quando si decide il campionato</h2>
         <div class="kpi-grid">
           <div class="kpi-box">
             <div class="kpi-label">Partite dalla fine</div>
@@ -193,13 +193,13 @@
     <section class="card">
       <h2>📋 Tabella Simulazione Dettagliata <span class="badge-pro" id="freeLimitBadge">FREE: prime 4 righe</span></h2>
       <p style="font-size:13px;color:var(--txt-muted);margin-bottom:16px;line-height:1.5">
-        Simulazione partita per partita: vedi l'evoluzione dei punti, gap e momento esatto del clinch matematico.
+        Simulazione partita per partita: vedi punti, gap e il momento del verdetto matematico (capolista o inseguitrice).
       </p>
       <div class="table-wrapper">
         <table>
           <thead>
             <tr>
-              <th>Step</th><th>k</th><th>R</th><th>Pt Leader</th><th>Pt Avv</th><th>Gap</th><th>Bottino max</th><th>Stato</th>
+              <th>Step</th><th>k</th><th>R</th><th>Pt Capolista</th><th>Pt Inseguitrice</th><th>Gap</th><th>Bottino max</th><th>Stato</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -220,7 +220,7 @@
     <section class="card pro-section" id="sensitivitySection">
       <h2>📊 Sensitivity Analysis <span class="badge-pro">PRO</span></h2>
       <p style="font-size:13px;color:var(--txt-muted);margin-bottom:12px;line-height:1.5">
-        Griglia: varia medie punti ±0.4 per vedere come cambia il risultato
+        Griglia: varia medie punti ±0.4 per vedere come cambia il verdetto
       </p>
       <div id="sensitivityGrid" class="sensitivity-grid"></div>
       <button class="btn-pro" style="width:100%;margin-top:16px" onclick="showPaywall()">🔓 Sblocca PRO per l'analisi di sensibilità (5€)</button>
@@ -229,11 +229,11 @@
     <section class="card pro-section" id="probabilitySection">
       <h2>🎲 Probabilità Monte Carlo <span class="badge-pro">PRO</span></h2>
       <p style="font-size:13px;color:var(--txt-muted);margin-bottom:12px;line-height:1.5">
-        Simula 10.000 stagioni considerando la volatilità dei risultati per ottenere probabilità statistiche affidabili.
+        Simula 10.000 stagioni considerando la volatilità dei risultati per ottenere probabilità statistiche.
       </p>
       <label style="display:block;margin-bottom:12px">
         <span class="label-text">Volatilità (±punti/partita): <span id="volValue">0.20</span></span>
-        <input id="volatilitySlider" type="range" min="0.05" max="0.50" step="0.05" value="0.20" 
+        <input id="volatilitySlider" type="range" min="0.05" max="0.50" step="0.05" value="0.20"
                style="width:100%;margin-top:8px" disabled />
       </label>
       <button id="runMonteCarloBtn" class="btn-primary" style="margin-bottom:16px" disabled>Simula 10k stagioni</button>
@@ -291,4 +291,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
