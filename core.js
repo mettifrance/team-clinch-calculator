@@ -1,6 +1,6 @@
 // core.js
 // ========================================================
-// LOGICA PURA: calcolo titolo (capolista/inseguitrice), presets, sensitivity, Monte Carlo
+// LOGICA PURA: titolo (capolista/inseguitrice), presets, sensitivity, Monte Carlo
 // Zero accesso al DOM
 // ========================================================
 
@@ -9,39 +9,37 @@ const int = n => Math.round(n);
 const clamp = (n, min, max) => Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : NaN;
 const parseLocale = raw => parseFloat(String(raw).trim().replace(/\s+/g, '').replace(',', '.'));
 
+const EPS = 1e-9;
+
 // READ INPUTS (riceve gli elementi DOM da app.js)
 function readInputs(elements) {
   return {
-    homeName: elements.homeName.value.trim() || 'Capolista',
-    awayName: elements.awayName.value.trim() || 'Inseguitrice',
-    pointsHome: parseFloat(elements.pointsHome.value),
-    pointsAway: parseFloat(elements.pointsAway.value),
-    remaining: parseInt(elements.remaining.value, 10),
-    ppgHome: parseLocale(elements.ppgHome.value),
-    ppgAway: parseLocale(elements.ppgAway.value),
+    homeName: (elements.homeName?.value || '').trim() || 'Capolista',
+    awayName: (elements.awayName?.value || '').trim() || 'Inseguitrice',
+    pointsHome: parseFloat(elements.pointsHome?.value),
+    pointsAway: parseFloat(elements.pointsAway?.value),
+    remaining: parseInt(elements.remaining?.value, 10),
+    ppgHome: parseLocale(elements.ppgHome?.value),
+    ppgAway: parseLocale(elements.ppgAway?.value),
     pointsPerWin: 3
   };
 }
 
 // VALIDATE
-function validate(scenario) {
-  if (!Number.isFinite(scenario.pointsHome) || scenario.pointsHome < 0) return 'Punti capolista non validi';
-  if (!Number.isFinite(scenario.pointsAway) || scenario.pointsAway < 0) return 'Punti inseguitrice non validi';
-  if (!Number.isInteger(scenario.remaining) || scenario.remaining < 0) return 'Partite rimanenti non valide';
-  if (!Number.isFinite(scenario.ppgHome) || scenario.ppgHome < 0 || scenario.ppgHome > 3) return 'Media punti capolista non valida (0–3)';
-  if (!Number.isFinite(scenario.ppgAway) || scenario.ppgAway < 0 || scenario.ppgAway > 3) return 'Media punti inseguitrice non valida (0–3)';
+function validate(s) {
+  if (!Number.isFinite(s.pointsHome) || s.pointsHome < 0) return 'Punti capolista non validi';
+  if (!Number.isFinite(s.pointsAway) || s.pointsAway < 0) return 'Punti inseguitrice non validi';
+  if (!Number.isInteger(s.remaining) || s.remaining < 0) return 'Partite rimanenti non valide';
+  if (!Number.isFinite(s.ppgHome) || s.ppgHome < 0 || s.ppgHome > 3) return 'Media punti capolista non valida (0–3)';
+  if (!Number.isFinite(s.ppgAway) || s.ppgAway < 0 || s.ppgAway > 3) return 'Media punti inseguitrice non valida (0–3)';
   return null;
 }
 
 /**
  * computeTitleRace
- * Ritorna:
- * - homeClinchK: prima k in cui la capolista vince matematicamente
- * - awayClinchK: prima k in cui l'inseguitrice vince matematicamente
- * - winner: 'home' | 'away' | null
- * - winnerClinchK: k del vincitore (se esiste)
- * - expectedFinal: proiezione a fine stagione con le medie (non “matematica”, solo proiezione)
- * - rows: righe per tabella (con homeClinched/awayClinched)
+ * - La squadra X clincha quando: punti_X > punti_Y + (pointsPerWin * partite_rimanenti)
+ * - Gestisce anche l'eventuale clinch dell'inseguitrice
+ * - Evidenzia il caso "parità all'ultima" (R=0 e gap=0)
  */
 function computeTitleRace(scenario) {
   const rows = [];
@@ -56,18 +54,22 @@ function computeTitleRace(scenario) {
     const pH = pointsHome + k * ppgHome;
     const pA = pointsAway + k * ppgAway;
 
-    const gap = pH - pA;
     const bounty = pointsPerWin * R;
 
-    const homeClinched = gap > bounty;      // capolista irraggiungibile
-    const awayClinched = (-gap) > bounty;   // inseguitrice irraggiungibile
+    // Regola richiesta: il vincitore deve avere punti > (punti avversario + bottino max)
+    const homeClinched = pH > (pA + bounty + EPS);
+    const awayClinched = pA > (pH + bounty + EPS);
 
     if (homeClinchK === null && homeClinched) homeClinchK = k;
     if (awayClinchK === null && awayClinched) awayClinchK = k;
 
+    const gap = pH - pA;
+    const isFinalTie = (R === 0) && (Math.abs(gap) < EPS);
+
     let status = 'In corsa';
     if (homeClinched) status = 'Capolista campione (matematico)';
     else if (awayClinched) status = 'Inseguitrice campione (matematico)';
+    else if (isFinalTie) status = 'Parità finale (decide il regolamento)';
 
     rows.push({
       step: k + 1,
@@ -79,43 +81,42 @@ function computeTitleRace(scenario) {
       bounty,
       homeClinched,
       awayClinched,
+      isFinalTie,
       status
     });
   }
 
-  // Determina il “primo verdetto matematico”, se esiste
-  let winner = null;
-  let winnerClinchK = null;
+  // Primo verdetto matematico (se esiste)
+  let winner = null;        // 'home' | 'away' | null
+  let winnerClinchK = null; // number | null
 
   if (homeClinchK !== null && awayClinchK !== null) {
     if (homeClinchK < awayClinchK) { winner = 'home'; winnerClinchK = homeClinchK; }
     else if (awayClinchK < homeClinchK) { winner = 'away'; winnerClinchK = awayClinchK; }
-    else { winner = 'home'; winnerClinchK = homeClinchK; } // rarissimo (parità), default
+    else { winner = 'home'; winnerClinchK = homeClinchK; }
   } else if (homeClinchK !== null) {
     winner = 'home'; winnerClinchK = homeClinchK;
   } else if (awayClinchK !== null) {
     winner = 'away'; winnerClinchK = awayClinchK;
   }
 
-  // Proiezione “a medie costanti” (non matematica): chi finisce davanti
+  const lastRow = rows[rows.length - 1];
+  const finalTie = !!lastRow?.isFinalTie;
+
+  // Proiezione a fine stagione (solo informativa, non matematica)
   const homeFinal = pointsHome + remaining * ppgHome;
   const awayFinal = pointsAway + remaining * ppgAway;
-  const expectedWinner = homeFinal > awayFinal ? 'home' : (awayFinal > homeFinal ? 'away' : 'tie');
+  const expectedWinner = homeFinal > awayFinal + EPS ? 'home' : (awayFinal > homeFinal + EPS ? 'away' : 'tie');
 
   return {
     homeClinchK,
     awayClinchK,
     winner,
     winnerClinchK,
+    finalTie,
     expectedFinal: { homeFinal, awayFinal, expectedWinner },
     rows
   };
-}
-
-// Legacy: mantiene il vecchio nome (capolista-only) se ti serve temporaneamente
-function computeClinch(scenario) {
-  const res = computeTitleRace(scenario);
-  return { clinchK: res.homeClinchK, rows: res.rows.map(r => ({ ...r, clinched: r.homeClinched })) };
 }
 
 // PRESETS (10 scenari what-if)
@@ -132,7 +133,7 @@ const presets = [
   { label: 'Derby swing', deltaH: -0.30, deltaA: 0.30 }
 ];
 
-// SENSITIVITY ANALYSIS
+// SENSITIVITY GRID (ritorna winner/winnerClinchK)
 function computeSensitivityGrid(baseScenario) {
   const results = [];
   const step = 0.1;
@@ -149,16 +150,18 @@ function computeSensitivityGrid(baseScenario) {
       results.push({
         ppgHome: ppgH,
         ppgAway: ppgA,
-        winner: out.winner,                 // 'home' | 'away' | null
-        winnerClinchK: out.winnerClinchK,   // numero partite da qui (k)
-        fromEnd: out.winnerClinchK !== null ? baseScenario.remaining - out.winnerClinchK : null
+        winner: out.winner,
+        winnerClinchK: out.winnerClinchK,
+        fromEnd: out.winnerClinchK !== null ? baseScenario.remaining - out.winnerClinchK : null,
+        finalTie: out.finalTie
       });
     }
   }
+
   return results;
 }
 
-// MONTE CARLO SIMULATION (ora può clinchare anche l'inseguitrice)
+// MONTE CARLO (uniforme ±volatility, clamp 0..3)
 function runMonteCarlo(baseScenario, volatility, simulations = 10000) {
   const homeCounts = {};
   const awayCounts = {};
@@ -167,10 +170,11 @@ function runMonteCarlo(baseScenario, volatility, simulations = 10000) {
   for (let sim = 0; sim < simulations; sim++) {
     let pH = baseScenario.pointsHome;
     let pA = baseScenario.pointsAway;
-    let clinched = false;
+    let decided = false;
 
     for (let k = 1; k <= baseScenario.remaining; k++) {
       const R = baseScenario.remaining - k;
+      const bounty = 3 * R;
 
       const ptsH = clamp(baseScenario.ppgHome + (Math.random() - 0.5) * 2 * volatility, 0, 3);
       const ptsA = clamp(baseScenario.ppgAway + (Math.random() - 0.5) * 2 * volatility, 0, 3);
@@ -178,22 +182,19 @@ function runMonteCarlo(baseScenario, volatility, simulations = 10000) {
       pH += ptsH;
       pA += ptsA;
 
-      const gap = pH - pA;
-      const bounty = 3 * R;
-
-      if (gap > bounty) {
+      if (pH > (pA + bounty + EPS)) {
         homeCounts[k] = (homeCounts[k] || 0) + 1;
-        clinched = true;
+        decided = true;
         break;
       }
-      if ((-gap) > bounty) {
+      if (pA > (pH + bounty + EPS)) {
         awayCounts[k] = (awayCounts[k] || 0) + 1;
-        clinched = true;
+        decided = true;
         break;
       }
     }
 
-    if (!clinched) noneCount++;
+    if (!decided) noneCount++;
   }
 
   const home = [];
@@ -204,7 +205,6 @@ function runMonteCarlo(baseScenario, volatility, simulations = 10000) {
   for (let k = 1; k <= baseScenario.remaining; k++) {
     const cH = homeCounts[k] || 0;
     const cA = awayCounts[k] || 0;
-
     cumH += cH;
     cumA += cA;
 
@@ -215,16 +215,18 @@ function runMonteCarlo(baseScenario, volatility, simulations = 10000) {
   return { simulations, noneCount, home, away };
 }
 
-// Export
+// EXPORT
 if (typeof window !== 'undefined') {
   window.CoreLogic = {
+    // core
     readInputs,
     validate,
     computeTitleRace,
-    computeClinch, // legacy
+    // features
     presets,
     computeSensitivityGrid,
     runMonteCarlo,
+    // utils
     int,
     clamp,
     parseLocale
